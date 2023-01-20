@@ -1,0 +1,44 @@
+---
+- hosts: edge_cluster
+  become: yes
+  serial: 1
+
+  pre_tasks:
+    - name: Update repositories cache and install needed packages
+      ansible.builtin.apt:
+        update_cache: yes
+        pkg:
+          - make
+          - gcc
+          - pkg-config
+          - linux-headers-5.15.0-1028-aws
+
+    - name: Download the NVIDIA drivers
+      ansible.builtin.get_url:
+        url: https://us.download.nvidia.com/tesla/470.141.03/NVIDIA-Linux-x86_64-470.141.03.run
+        dest: /root/NVIDIA-Linux-x86_64-470.141.03.run
+
+    # TODO: This doesn't actually install the driver for some reason.
+    - name: Install the NVIDIA drivers
+      args:
+        creates: /root/NVIDIA-Linux-x86_64-470.141.03.run
+      ansible.builtin.shell: sh /root/NVIDIA-Linux-x86_64-470.141.03.run --silent --disable-nouveau --install-libglvnd
+
+    - name: Install flussonic
+      shell: "curl -sSf https://flussonic.com/public/install.sh | sh"
+
+    - name: Install flussonic license
+      vars:
+        flussonic_license: "licencekey"
+        ingest_servers: "{{ groups['ingest_cluster'] }}"
+      copy: content="{{ flussonic_license }}" dest=/etc/flussonic/license.txt
+
+    - name: Start flussonic
+      ansible.builtin.shell: "/etc/init.d/flussonic start"
+
+    - name: Install the flussonic config
+      vars:
+        ingest_servers: "{{ groups['ingest_cluster'] }}"
+      ansible.builtin.template:
+        src: ../configs/edge.conf.j2
+        dest: /etc/flussonic/flussonic.conf

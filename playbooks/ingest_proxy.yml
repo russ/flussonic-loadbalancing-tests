@@ -1,0 +1,27 @@
+---
+- hosts: ingest_proxy
+  become: yes
+  serial: 1
+
+  pre_tasks:
+    - name: Install certbot
+      shell: "apt-get -y update && apt-get install -y certbot python3-certbot-dns-route53"
+
+    - name: Install the certificate
+      ansible.builtin.shell: 'certbot certonly -n --dns-route53 --dns-route53-propagation-seconds 30 -d "live.domain.test" -m support@domain.test --agree-tos'
+
+    - name: Make a cert haproxy can use
+      ansible.builtin.shell: 'cat "/etc/letsencrypt/live/live.domain.test/fullchain.pem" "/etc/letsencrypt/live/live.domain.test/privkey.pem" > "/etc/ssl/live.domain.test.pem"'
+
+    - name: Install haproxy
+      shell: "apt-get -y install haproxy"
+
+    - name: Install haproxy config
+      vars:
+        servers_to_monitor: "{{ groups['ingest_cluster'] }}"
+      ansible.builtin.template:
+        src: ../configs/ingest-proxy.cfg.j2
+        dest: /etc/haproxy/haproxy.cfg
+        owner: haproxy
+        group: haproxy
+        mode: '0644'

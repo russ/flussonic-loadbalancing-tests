@@ -1,0 +1,12 @@
+[ingest_proxy]
+${ public_ip_ingest_proxy }
+
+[ingest_cluster]
+%{ for ip in public_ips_ingest_cluster ~}
+${ ip }
+%{ endfor ~}
+
+[edge_cluster]
+%{ for ip in public_ips_edge_cluster ~}
+${ ip }
+%{ endfor ~}

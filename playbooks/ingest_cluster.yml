@@ -1,0 +1,22 @@
+---
+- hosts: ingest_cluster
+  become: yes
+  serial: 1
+
+  pre_tasks:
+    - name: Install flussonic
+      shell: "curl -sSf https://flussonic.com/public/install.sh | sh"
+
+    - name: Install flussonic license
+      vars:
+        flussonic_license: "licencekey"
+        ingest_servers: "{{ groups['ingest_cluster'] }}"
+      copy: content="{{ flussonic_license }}" dest=/etc/flussonic/license.txt
+
+    - name: Start flussonic
+      ansible.builtin.shell: "/etc/init.d/flussonic start"
+
+    - name: Install the flussonic config
+      ansible.builtin.copy:
+        src: ../configs/ingest.conf
+        dest: /etc/flussonic/flussonic.conf
